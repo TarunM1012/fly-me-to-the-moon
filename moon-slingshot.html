@@ -233,11 +233,11 @@
 
     <script>
         // Game constants
-        const GRAVITY = 0.3;
+        const GRAVITY_CONSTANT = 1500; // Realistic orbital gravity
         const EARTH_RADIUS = 40;
         const ROCKET_SIZE = 8;
         const MOON_RADIUS = 25;
-        const TRAIL_LENGTH = 20;
+        const TRAIL_LENGTH = 100; // Longer trail for orbital paths
         const ASTEROID_RADIUS = 8;
 
         // Game state
@@ -260,17 +260,18 @@
         let rocketLanded = false;
 
         // Physics objects
-        let earth = { x: 400, y: 300 }; // Centered on screen
+        let earth = { x: 400, y: 300, r: EARTH_RADIUS }; // Centered on screen
         let rocket = { 
-            x: 400, 
-            y: 260, // Just above Earth
+            x: earth.x,
+            y: earth.y - earth.r - 10, // Just above Earth
             vx: 0, 
             vy: 0, 
             trail: [],
             isLaunched: false,
             orbitRadius: 0,
             orbitAngle: 0,
-            isOrbiting: false
+            isOrbiting: false,
+            launchPoint: { x: earth.x, y: earth.y - earth.r - 10 } // Launch point on Earth
         };
         let moon = { 
             x: 400, 
@@ -458,20 +459,15 @@
 
         // Update rocket physics with realistic orbital mechanics
         function updateRocket() {
-            if (rocket.isOrbiting) {
-                // Orbital motion
-                rocket.orbitAngle += 0.02;
-                rocket.x = earth.x + Math.cos(rocket.orbitAngle) * rocket.orbitRadius;
-                rocket.y = earth.y + Math.sin(rocket.orbitAngle) * rocket.orbitRadius;
-            } else {
+            if (rocket.isLaunched) {
                 // Apply realistic gravitational force towards Earth
                 const dx = earth.x - rocket.x;
                 const dy = earth.y - rocket.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 
-                if (distance > 10) {
-                    // Realistic gravitational force (inverse square law)
-                    const force = 0.15 / (distance * distance);
+                if (distance > 5) {
+                    // Realistic orbital gravity
+                    const force = GRAVITY_CONSTANT / (distance * distance);
                     rocket.vx += (dx / distance) * force;
                     rocket.vy += (dy / distance) * force;
                 }
@@ -479,25 +475,6 @@
                 // Update position
                 rocket.x += rocket.vx;
                 rocket.y += rocket.vy;
-                
-                // Check for orbital capture with more realistic conditions
-                const distanceFromEarth = Math.sqrt((rocket.x - earth.x) ** 2 + (rocket.y - earth.y) ** 2);
-                const velocity = Math.sqrt(rocket.vx ** 2 + rocket.vy ** 2);
-                
-                // More realistic orbital capture conditions
-                if (distanceFromEarth > 60 && distanceFromEarth < 300 && velocity > 1 && velocity < 8) {
-                    // Check if velocity is perpendicular to radius (circular orbit condition)
-                    const radialVectorX = rocket.x - earth.x;
-                    const radialVectorY = rocket.y - earth.y;
-                    const dotProduct = rocket.vx * radialVectorX + rocket.vy * radialVectorY;
-                    const radialSpeed = dotProduct / distanceFromEarth;
-                    
-                    if (Math.abs(radialSpeed) < 0.5) {
-                        rocket.isOrbiting = true;
-                        rocket.orbitRadius = distanceFromEarth;
-                        rocket.orbitAngle = Math.atan2(rocket.y - earth.y, rocket.x - earth.x);
-                    }
-                }
             }
             
             // Add to trail
@@ -506,8 +483,8 @@
                 rocket.trail.shift();
             }
             
-            // Check if rocket is off screen
-            if (rocket.y > canvas.height + 50 || rocket.x < -50 || rocket.x > canvas.width + 50) {
+            // Check if rocket is off screen (smaller bounds)
+            if (rocket.y > canvas.height || rocket.x < 0 || rocket.x > canvas.width) {
                 if (!gameState.gameWon) {
                     setTimeout(() => {
                         showMessage("Missed! Try again!", "#ff6b6b");
@@ -771,32 +748,35 @@
 
         // Draw trajectory preview
         function drawTrajectory() {
-            const dx = mouse.x - earth.x;
-            const dy = mouse.y - earth.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            const power = Math.min(distance / 3, 15);
+            // Calculate velocity from launch point to mouse
+            const dx = mouse.x - rocket.launchPoint.x;
+            const dy = mouse.y - rocket.launchPoint.y;
+            const angle = Math.atan2(dy, dx);
+            const distance = Math.min(Math.hypot(dx, dy), 100);
+            const speed = distance * 0.1;
             
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
             ctx.lineWidth = 2;
             ctx.setLineDash([5, 5]);
             
-            // Draw trajectory points with orbital mechanics
-            let x = earth.x;
-            let y = earth.y;
-            let vx = -dx / distance * power;
-            let vy = -dy / distance * power;
+            // Draw trajectory points with realistic orbital mechanics
+            let x = rocket.launchPoint.x;
+            let y = rocket.launchPoint.y;
+            let vx = Math.cos(angle) * speed;
+            let vy = Math.sin(angle) * speed;
             
             ctx.beginPath();
             ctx.moveTo(x, y);
             
-            for (let i = 0; i < 100; i++) {
-                // Apply gravitational force towards Earth
+            for (let i = 0; i < 300; i++) {
+                // Apply gravitational force BEFORE updating position
                 const dxToEarth = earth.x - x;
                 const dyToEarth = earth.y - y;
                 const distanceToEarth = Math.sqrt(dxToEarth * dxToEarth + dyToEarth * dyToEarth);
                 
-                if (distanceToEarth > 10) {
-                    const force = 0.15 / (distanceToEarth * distanceToEarth);
+                if (distanceToEarth > 5) {
+                    // Use realistic orbital gravity
+                    const force = GRAVITY_CONSTANT / (distanceToEarth * distanceToEarth);
                     vx += (dxToEarth / distanceToEarth) * force;
                     vy += (dyToEarth / distanceToEarth) * force;
                 }
@@ -806,6 +786,7 @@
                 
                 ctx.lineTo(x, y);
                 
+                // Stop if trajectory goes off screen (smaller bounds)
                 if (y > canvas.height || x < 0 || x > canvas.width) break;
             }
             
@@ -883,6 +864,15 @@
             const distance = Math.sqrt(dx * dx + dy * dy);
             
             if (distance < EARTH_RADIUS && !rocket.isLaunched) {
+                // Set launch point on Earth surface
+                const angle = Math.atan2(dy, dx);
+                rocket.launchPoint.x = earth.x + Math.cos(angle) * EARTH_RADIUS;
+                rocket.launchPoint.y = earth.y + Math.sin(angle) * EARTH_RADIUS;
+                
+                // Position rocket at launch point
+                rocket.x = rocket.launchPoint.x;
+                rocket.y = rocket.launchPoint.y;
+                
                 gameState.isDragging = true;
                 mouse.isDown = true;
             }
@@ -904,13 +894,15 @@
 
         // Launch rocket
         function launchRocket() {
-            const dx = mouse.x - earth.x;
-            const dy = mouse.y - earth.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            const power = Math.min(distance / 3, 15);
+            // Calculate velocity from launch point to mouse
+            const dx = mouse.x - rocket.launchPoint.x;
+            const dy = mouse.y - rocket.launchPoint.y;
+            const angle = Math.atan2(dy, dx);
+            const distance = Math.min(Math.hypot(dx, dy), 100);
+            const speed = distance * 0.1; // Realistic orbital speed
             
-            rocket.vx = -dx / distance * power;
-            rocket.vy = -dy / distance * power;
+            rocket.vx = Math.cos(angle) * speed;
+            rocket.vy = Math.sin(angle) * speed;
             rocket.isLaunched = true;
             gameState.isLaunched = true;
             gameState.attempts++;
@@ -922,7 +914,9 @@
         // Reset rocket
         function resetRocket() {
             rocket.x = earth.x;
-            rocket.y = earth.y - 40; // Just above Earth
+            rocket.y = earth.y - earth.r - 10; // Just above Earth
+            rocket.launchPoint.x = earth.x;
+            rocket.launchPoint.y = earth.y - earth.r - 10;
             rocket.vx = 0;
             rocket.vy = 0;
             rocket.isLaunched = false;
@@ -938,7 +932,7 @@
             confetti = [];
             
             document.getElementById('retryBtn').style.display = 'none';
-            showMessage("Drag from Earth to aim your rocket!", "#fff");
+            showMessage("Click anywhere on Earth to choose launch point, then drag to aim!", "#fff");
         }
 
         // Reset game
