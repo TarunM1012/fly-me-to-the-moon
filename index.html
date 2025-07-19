@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌙 Moon Slingshot - Physics Game</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="game-container">
+        <h1 class="game-title">🌙 Moon Slingshot</h1>
+        
+        <div class="ui-panel">
+            <div class="score">Score: <span id="score">0</span></div>
+            <div>Attempts: <span id="attempts">0</span></div>
+            <div style="margin-top: 10px;">
+                <label style="color: #fff; margin-right: 10px;">Difficulty:</label>
+                <select id="difficultySelect" onchange="changeDifficulty()" style="background: rgba(255,255,255,0.2); color: #fff; border: 1px solid rgba(255,255,255,0.3); padding: 2px 5px; border-radius: 3px;">
+                    <option value="easy">Easy</option>
+                    <option value="medium">Medium</option>
+                    <option value="hard">Hard</option>
+                </select>
+            </div>
+        </div>
+        
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <div class="instructions">
+            <strong>How to play:</strong> Click anywhere on Earth to choose launch point, then drag to aim your rocket! 
+            Release to launch. Hit the moon to score points! 🌙
+        </div>
+        
+        <div class="message" id="message">Click anywhere on Earth to choose launch point, then drag to aim!</div>
+        
+        <div class="upgrades">
+            <button class="upgrade-btn" id="ionEngine" onclick="toggleUpgrade('ionEngine')">
+                ⚡ Ion Engine
+            </button>
+            <button class="upgrade-btn" id="wormhole" onclick="toggleUpgrade('wormhole')">
+                🌌 Wormhole Warp
+            </button>
+        </div>
+        
+        <div class="fact" id="fact" style="display: none;"></div>
+        
+        <button class="retry-btn" id="retryBtn" onclick="resetGame()" style="display: none;">
+            🔄 Try Again
+        </button>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html> 
