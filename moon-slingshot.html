@@ -209,11 +209,11 @@
         <canvas id="gameCanvas" width="800" height="600"></canvas>
         
         <div class="instructions">
-            <strong>How to play:</strong> Click and drag from the planet to aim your rocket! 
+            <strong>How to play:</strong> Click and drag from Earth to aim your rocket! 
             Release to launch. Hit the moon to score points! 🌙
         </div>
         
-        <div class="message" id="message">Drag from the planet to aim your rocket!</div>
+        <div class="message" id="message">Drag from Earth to aim your rocket!</div>
         
         <div class="upgrades">
             <button class="upgrade-btn" id="ionEngine" onclick="toggleUpgrade('ionEngine')">
@@ -255,10 +255,10 @@
         };
 
         // Physics objects
-        let earth = { x: 400, y: 550 };
+        let earth = { x: 400, y: 300 }; // Centered on screen
         let rocket = { 
             x: 400, 
-            y: 510, 
+            y: 260, // Just above Earth
             vx: 0, 
             vy: 0, 
             trail: [],
@@ -762,7 +762,7 @@
         // Reset rocket
         function resetRocket() {
             rocket.x = earth.x;
-            rocket.y = earth.y - 30;
+            rocket.y = earth.y - 40; // Just above Earth
             rocket.vx = 0;
             rocket.vy = 0;
             rocket.isLaunched = false;
