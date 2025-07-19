@@ -254,6 +254,11 @@
             }
         };
 
+        // Visual effects
+        let explosions = [];
+        let confetti = [];
+        let rocketLanded = false;
+
         // Physics objects
         let earth = { x: 400, y: 300 }; // Centered on screen
         let rocket = { 
@@ -327,6 +332,10 @@
                 updateRocket();
             }
             
+            // Update visual effects
+            updateExplosions();
+            updateConfetti();
+            
             // Check collisions
             checkCollisions();
         }
@@ -351,6 +360,72 @@
                 if (asteroid.x > canvas.width + 50) asteroid.x = -50;
                 if (asteroid.y < -50) asteroid.y = canvas.height + 50;
                 if (asteroid.y > canvas.height + 50) asteroid.y = -50;
+            }
+        }
+
+        // Create explosion effect
+        function createExplosion(x, y) {
+            for (let i = 0; i < 20; i++) {
+                explosions.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 10,
+                    vy: (Math.random() - 0.5) * 10,
+                    life: 1.0,
+                    decay: 0.02,
+                    size: Math.random() * 8 + 4,
+                    color: `hsl(${Math.random() * 60 + 10}, 100%, 50%)`
+                });
+            }
+        }
+
+        // Update explosions
+        function updateExplosions() {
+            for (let i = explosions.length - 1; i >= 0; i--) {
+                const explosion = explosions[i];
+                explosion.x += explosion.vx;
+                explosion.y += explosion.vy;
+                explosion.life -= explosion.decay;
+                explosion.vx *= 0.98;
+                explosion.vy *= 0.98;
+                
+                if (explosion.life <= 0) {
+                    explosions.splice(i, 1);
+                }
+            }
+        }
+
+        // Create confetti effect
+        function createConfetti() {
+            for (let i = 0; i < 100; i++) {
+                confetti.push({
+                    x: Math.random() * canvas.width,
+                    y: -10,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: Math.random() * 3 + 2,
+                    life: 1.0,
+                    decay: 0.005,
+                    size: Math.random() * 6 + 3,
+                    color: `hsl(${Math.random() * 360}, 70%, 60%)`,
+                    rotation: Math.random() * 360,
+                    rotationSpeed: (Math.random() - 0.5) * 10
+                });
+            }
+        }
+
+        // Update confetti
+        function updateConfetti() {
+            for (let i = confetti.length - 1; i >= 0; i--) {
+                const piece = confetti[i];
+                piece.x += piece.vx;
+                piece.y += piece.vy;
+                piece.vy += 0.1; // Gravity
+                piece.life -= piece.decay;
+                piece.rotation += piece.rotationSpeed;
+                
+                if (piece.life <= 0 || piece.y > canvas.height + 20) {
+                    confetti.splice(i, 1);
+                }
             }
         }
 
@@ -381,7 +456,7 @@
             }
         }
 
-        // Update rocket physics with orbital mechanics
+        // Update rocket physics with realistic orbital mechanics
         function updateRocket() {
             if (rocket.isOrbiting) {
                 // Orbital motion
@@ -389,14 +464,14 @@
                 rocket.x = earth.x + Math.cos(rocket.orbitAngle) * rocket.orbitRadius;
                 rocket.y = earth.y + Math.sin(rocket.orbitAngle) * rocket.orbitRadius;
             } else {
-                // Apply gravity towards Earth
+                // Apply realistic gravitational force towards Earth
                 const dx = earth.x - rocket.x;
                 const dy = earth.y - rocket.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 
                 if (distance > 10) {
-                    // Apply gravitational force
-                    const force = 0.1 / (distance * distance);
+                    // Realistic gravitational force (inverse square law)
+                    const force = 0.15 / (distance * distance);
                     rocket.vx += (dx / distance) * force;
                     rocket.vy += (dy / distance) * force;
                 }
@@ -405,14 +480,23 @@
                 rocket.x += rocket.vx;
                 rocket.y += rocket.vy;
                 
-                // Check for orbital capture
+                // Check for orbital capture with more realistic conditions
                 const distanceFromEarth = Math.sqrt((rocket.x - earth.x) ** 2 + (rocket.y - earth.y) ** 2);
                 const velocity = Math.sqrt(rocket.vx ** 2 + rocket.vy ** 2);
                 
-                if (distanceFromEarth > 50 && distanceFromEarth < 200 && velocity < 3) {
-                    rocket.isOrbiting = true;
-                    rocket.orbitRadius = distanceFromEarth;
-                    rocket.orbitAngle = Math.atan2(rocket.y - earth.y, rocket.x - earth.x);
+                // More realistic orbital capture conditions
+                if (distanceFromEarth > 60 && distanceFromEarth < 300 && velocity > 1 && velocity < 8) {
+                    // Check if velocity is perpendicular to radius (circular orbit condition)
+                    const radialVectorX = rocket.x - earth.x;
+                    const radialVectorY = rocket.y - earth.y;
+                    const dotProduct = rocket.vx * radialVectorX + rocket.vy * radialVectorY;
+                    const radialSpeed = dotProduct / distanceFromEarth;
+                    
+                    if (Math.abs(radialSpeed) < 0.5) {
+                        rocket.isOrbiting = true;
+                        rocket.orbitRadius = distanceFromEarth;
+                        rocket.orbitAngle = Math.atan2(rocket.y - earth.y, rocket.x - earth.x);
+                    }
                 }
             }
             
@@ -466,18 +550,25 @@
             gameState.attempts++;
             updateScore();
             
+            // Create confetti and land rocket on moon
+            createConfetti();
+            rocketLanded = true;
+            
             showMessage("🎉 SUCCESS! You hit the moon!", "#00ff00");
             showRandomFact();
             
             setTimeout(() => {
                 resetGame();
-            }, 3000);
+            }, 5000);
         }
 
         // Handle game loss (asteroid collision)
         function gameLost() {
             gameState.attempts++;
             updateScore();
+            
+            // Create explosion at rocket position
+            createExplosion(rocket.x, rocket.y);
             
             showMessage("💥 CRASH! Asteroid collision!", "#ff6b6b");
             
@@ -503,8 +594,19 @@
             // Draw moon
             drawMoon();
             
-            // Draw rocket
-            drawRocket();
+            // Draw rocket (unless landed on moon)
+            if (!rocketLanded) {
+                drawRocket();
+            }
+            
+            // Draw visual effects
+            drawExplosions();
+            drawConfetti();
+            
+            // Draw landed rocket on moon
+            if (rocketLanded) {
+                drawLandedRocket();
+            }
             
             // Draw trajectory preview
             if (gameState.isDragging && !rocket.isLaunched) {
@@ -694,7 +796,7 @@
                 const distanceToEarth = Math.sqrt(dxToEarth * dxToEarth + dyToEarth * dyToEarth);
                 
                 if (distanceToEarth > 10) {
-                    const force = 0.1 / (distanceToEarth * distanceToEarth);
+                    const force = 0.15 / (distanceToEarth * distanceToEarth);
                     vx += (dxToEarth / distanceToEarth) * force;
                     vy += (dyToEarth / distanceToEarth) * force;
                 }
@@ -709,6 +811,64 @@
             
             ctx.stroke();
             ctx.setLineDash([]);
+        }
+
+        // Draw explosions
+        function drawExplosions() {
+            for (let explosion of explosions) {
+                ctx.save();
+                ctx.globalAlpha = explosion.life;
+                ctx.fillStyle = explosion.color;
+                ctx.beginPath();
+                ctx.arc(explosion.x, explosion.y, explosion.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        // Draw confetti
+        function drawConfetti() {
+            for (let piece of confetti) {
+                ctx.save();
+                ctx.globalAlpha = piece.life;
+                ctx.fillStyle = piece.color;
+                ctx.translate(piece.x, piece.y);
+                ctx.rotate(piece.rotation * Math.PI / 180);
+                ctx.fillRect(-piece.size/2, -piece.size/2, piece.size, piece.size);
+                ctx.restore();
+            }
+        }
+
+        // Draw landed rocket on moon
+        function drawLandedRocket() {
+            // Draw rocket on moon surface
+            ctx.save();
+            ctx.translate(moon.x, moon.y + MOON_RADIUS - 5);
+            
+            // Rocket body
+            ctx.fillStyle = '#ff4444';
+            ctx.fillRect(-ROCKET_SIZE, -ROCKET_SIZE, ROCKET_SIZE * 2, ROCKET_SIZE * 2);
+            
+            // Rocket tip
+            ctx.fillStyle = '#ff6666';
+            ctx.beginPath();
+            ctx.moveTo(ROCKET_SIZE, 0);
+            ctx.lineTo(ROCKET_SIZE + 8, -4);
+            ctx.lineTo(ROCKET_SIZE + 8, 4);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Landing gear
+            ctx.strokeStyle = '#888';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(-ROCKET_SIZE - 5, ROCKET_SIZE);
+            ctx.lineTo(-ROCKET_SIZE - 10, ROCKET_SIZE + 8);
+            ctx.moveTo(ROCKET_SIZE + 5, ROCKET_SIZE);
+            ctx.lineTo(ROCKET_SIZE + 10, ROCKET_SIZE + 8);
+            ctx.stroke();
+            
+            ctx.restore();
         }
 
         // Mouse event handlers
@@ -771,6 +931,11 @@
             gameState.isLaunched = false;
             gameState.gameWon = false;
             gameState.isDragging = false;
+            rocketLanded = false;
+            
+            // Clear visual effects
+            explosions = [];
+            confetti = [];
             
             document.getElementById('retryBtn').style.display = 'none';
             showMessage("Drag from Earth to aim your rocket!", "#fff");
